@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 @RestController
@@ -21,10 +23,11 @@ public class CompetingController {
         this.example = example;
     }
 
-    /** Publishes one work item onto the shared queue. */
+    /** Publishes one work item. A missing priority is treated as 0. */
     @PostMapping
     public void publish(@Valid @RequestBody TextRequest request) {
-        example.publish(request.text());
+        int priority = request.priority() == null ? 0 : request.priority();
+        example.publish(request.text(), priority);
     }
 
     /** Returns work taken by the first consumer. */
@@ -39,6 +42,9 @@ public class CompetingController {
         return example.workerB();
     }
 
-    public record TextRequest(@NotBlank String text) {
+    public record TextRequest(
+            @NotBlank String text,
+            @Min(0) @Max(10) Integer priority
+    ) {
     }
 }

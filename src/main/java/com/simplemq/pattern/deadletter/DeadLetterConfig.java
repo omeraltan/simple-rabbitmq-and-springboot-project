@@ -45,10 +45,15 @@ public class DeadLetterConfig {
         return new DirectExchange(DEAD_EXCHANGE, true, false);
     }
 
-    /** Declares the queue that keeps messages the worker refused. */
+    /**
+     * Declares the queue that keeps messages the worker refused.
+     * A parked message is discarded after 10 minutes so the shelf does not grow forever.
+     */
     @Bean
     Queue deadLetterQueue() {
-        return QueueBuilder.durable(DEAD_QUEUE).build();
+        return QueueBuilder.durable(DEAD_QUEUE)
+                .ttl(600_000)
+                .build();
     }
 
     /** Binds the dead-letter queue to the dead-letter exchange. */

@@ -1,12 +1,10 @@
 # simple-rabbitmq-and-springboot-project
 
-A small Spring Boot app with four RabbitMQ patterns. Each pattern has its own package, its own queues, and its own card on the page.
+Four small RabbitMQ examples in one Spring Boot app. Each example is a package, a pair of broker objects, and a card on the page.
 
-Hover the info mark on a card for a short explanation. The curl calls below hit the same endpoints.
+## What you need
 
-## Broker
-
-RabbitMQ is already up in Docker. This repo does not start the broker.
+RabbitMQ is already running in Docker. This repo does not start it.
 
 | | |
 |---|---|
@@ -16,27 +14,25 @@ RabbitMQ is already up in Docker. This repo does not start the broker.
 | Virtual host | `/` |
 | User | `egitim` |
 
-The password stays on your machine. It is not in git.
+Java 17 and Maven. The broker password stays in `src/main/resources/application.yml`, which git ignores. Copy `application.yml.example` and fill the password there.
 
 ## Run
-
-Java 17, Maven, and `spring-boot-starter-amqp`.
 
 ```bash
 mvn spring-boot:run
 ```
 
-Open http://localhost:8080.
+Open http://localhost:8080. The info mark on a card explains that pattern. The same calls work with curl. Send `{"text":"hello"}`.
 
-Copy `src/main/resources/application.yml.example` to `src/main/resources/application.yml` and put the broker password there. `application.yml` is ignored by git.
+Lists on the page live in memory. Restarting the app clears them. The queues stay in RabbitMQ until you delete them.
 
-`RabbitTemplate` publishes. A `@RabbitListener` consumes. Lists on the page are in memory, so a restart clears them. The queues stay in RabbitMQ.
+`RabbitTemplate` publishes. A `@RabbitListener` consumes. `RabbitConfig` turns the Java record into JSON on the wire.
 
-## Patterns
+## The four patterns
 
-Each pattern lives under `com.simplemq.pattern`. Send a JSON body `{"text":"hello"}`.
+**Point to point** — `com.simplemq.pattern.pointtopoint`
 
-**Point to point** (`pointtopoint`). One direct exchange, one queue, one listener.
+One direct exchange, one queue, one listener. The name of all three is `pattern.point`. A message is delivered once.
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/point-to-point \
@@ -44,7 +40,11 @@ curl -X POST http://localhost:8080/api/patterns/point-to-point \
 curl http://localhost:8080/api/patterns/point-to-point
 ```
 
-**Publish and subscribe** (`publishsubscribe`). A fanout exchange copies the message onto `pattern.fanout.inbox` and `pattern.fanout.audit`. Both lists show the same text.
+The queue is durable and each message expires after 60 seconds if nobody takes it. The listener in this app is fast, so you only see that expiry when the listener is stopped.
+
+**Publish and subscribe** — `com.simplemq.pattern.publishsubscribe`
+
+A fanout exchange, `pattern.fanout`, copies one publish onto `pattern.fanout.inbox` and `pattern.fanout.audit`. Both cards show the same text. The routing key is ignored.
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/publish-subscribe \
@@ -53,16 +53,22 @@ curl http://localhost:8080/api/patterns/publish-subscribe/inbox
 curl http://localhost:8080/api/patterns/publish-subscribe/audit
 ```
 
-**Competing consumers** (`competing`). One direct exchange, one queue (`pattern.competing`), two listeners. Each message is delivered to only one of them.
+**Competing consumers** — `com.simplemq.pattern.competing`
+
+One direct exchange and one queue, both named `pattern.competing`. Two listeners read that queue. Each message is handed to only one of them. Send a few and compare Worker A with Worker B.
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/competing \
-  -H 'Content-Type: application/json' -d '{"text":"job-1"}'
+  -H 'Content-Type: application/json' -d '{"text":"job-1","priority":8}'
 curl http://localhost:8080/api/patterns/competing/worker-a
 curl http://localhost:8080/api/patterns/competing/worker-b
 ```
 
-**Dead letter** (`deadletter`). The worker rejects the message. The broker moves it from `pattern.dead.work` to `pattern.dead.dlq`.
+The queue holds at most 50 messages. Past that, the oldest is dropped. Priority runs from 0 to 10. A higher number is delivered first when messages are waiting. The page has a priority field; leaving it empty sends 0. The list shows the priority next to the text, for example `job-1 · p8`.
+
+**Dead letter** — `com.simplemq.pattern.deadletter`
+
+The worker on `pattern.dead.work` rejects every message and does not put it back. The queue is declared with a dead-letter exchange, so the broker moves the message to `pattern.dead.dlq`.
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/dead-letter \
@@ -70,4 +76,20 @@ curl -X POST http://localhost:8080/api/patterns/dead-letter \
 curl http://localhost:8080/api/patterns/dead-letter
 ```
 
-In the management UI, open Queues and look for the `pattern.*` names.
+A message on the dead-letter queue expires after 10 minutes.
+
+## Queue arguments in this app
+
+RabbitMQ stores these on the queue the first time it is declared. Changing them later means declaring a new queue, or deleting the old one first.
+
+| Queue | Argument | Why it is here |
+|---|---|---|
+| `pattern.point` | durable, message TTL 60s | The queue survives a broker restart. An unread message does not sit forever. |
+| `pattern.fanout.inbox`, `pattern.fanout.audit` | durable | Each subscriber keeps its own copy. |
+| `pattern.competing` | durable, max length 50, drop oldest, max priority 10 | A work queue with two workers, a cap, and an order when it backs up. |
+| `pattern.dead.work` | durable, dead-letter exchange and routing key | A rejected message has somewhere to go. |
+| `pattern.dead.dlq` | durable, message TTL 10 min | The shelf for rejected messages empties itself. |
+
+Two settings are left off on purpose. Single active consumer would let only one of the competing workers run, which is a different pattern. A quorum queue would replace the classic queues this app declares; the examples do not need a replicated queue.
+
+In the management UI, open a queue and look at its arguments if you want to see the same values the code declared.

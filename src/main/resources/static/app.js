@@ -23,11 +23,16 @@ document.querySelectorAll("form[data-send]").forEach((patternForm) => {
         if (!body) {
             return;
         }
+        const priorityField = patternForm.querySelector("[name=priority]");
+        const payload = { text: body };
+        if (priorityField) {
+            payload.priority = Number(priorityField.value);
+        }
         setPatternStatus(patternStatus, "Sending…", "");
         const response = await fetch(patternForm.dataset.send, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: body })
+            body: JSON.stringify(payload)
         });
         if (!response.ok) {
             setPatternStatus(patternStatus, "The broker did not take it.", "bad");
