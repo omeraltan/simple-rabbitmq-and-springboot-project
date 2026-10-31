@@ -34,6 +34,13 @@ Lists on the page live in memory. Restarting the app clears them. The queues sta
 
 One direct exchange, one queue, one listener. The name of all three is `pattern.point`. A message is delivered once.
 
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.point]
+    exchange --> queue[pattern.point]
+    queue --> listener[Listener]
+```
+
 A bank transfer is the shape of this pattern. The mobile app publishes one debit. The exchange routes it to a single queue. One payment service takes it and posts the ledger line. A second service never sees that debit, so the customer is not charged twice.
 
 ```mermaid
@@ -72,6 +79,15 @@ Where it shows up:
 **Publish and subscribe** — `com.simplemq.pattern.publishsubscribe`
 
 A fanout exchange, `pattern.fanout`, copies one publish onto `pattern.fanout.inbox` and `pattern.fanout.audit`. Both cards show the same text. The routing key is ignored.
+
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.fanout]
+    exchange --> inbox[pattern.fanout.inbox]
+    exchange --> audit[pattern.fanout.audit]
+    inbox --> inboxListener[Inbox listener]
+    audit --> auditListener[Audit listener]
+```
 
 An order confirmation is the shape of this pattern. Checkout publishes one event. The exchange copies it onto every bound queue. Warehouse, email, and fraud each work from their own copy. One of them finishing does not remove the others.
 
@@ -115,6 +131,15 @@ Where it shows up:
 
 One direct exchange and one queue, both named `pattern.competing`. Two listeners read that queue. Each message is handed to only one of them. Send a few and compare Worker A with Worker B.
 
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.competing]
+    exchange --> queue[pattern.competing]
+    queue --> pick{one of}
+    pick --> workerA[Worker A]
+    pick --> workerB[Worker B]
+```
+
 A checkout desk is the shape of this pattern. Charges wait on one queue. Whichever payment server is free takes the next charge. Server A and server B never both settle the same card payment. A higher priority, such as a retry, is delivered first when the queue is backed up.
 
 ```mermaid
@@ -154,6 +179,15 @@ Where it shows up:
 **Dead letter** — `com.simplemq.pattern.deadletter`
 
 The worker on `pattern.dead.work` rejects every message and does not put it back. The queue is declared with a dead-letter exchange, so the broker moves the message to `pattern.dead.dlq`.
+
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.dead]
+    exchange --> work[pattern.dead.work]
+    work --> worker[Worker rejects]
+    worker --> dlx[pattern.dead.dlx]
+    dlx --> dlq[pattern.dead.dlq]
+```
 
 A malformed card payment is the shape of this pattern. The live worker refuses the message. The broker does not put it back on the work queue, where it would block the next valid charge. It moves the message through the dead-letter exchange onto a review queue. Support fixes the card number, then publishes a new message. The parked copy expires after 10 minutes in this app.
 
