@@ -21,10 +21,19 @@ public class CompetingConfig {
         return new DirectExchange(EXCHANGE, true, false);
     }
 
-    /** Declares the one queue both workers read from. */
+    /**
+     * Declares the shared work queue.
+     * It keeps at most 50 messages and drops the oldest when that cap is hit.
+     * Messages may carry a priority from 0 to 10; a higher number is delivered first
+     * when the queue is waiting.
+     */
     @Bean
     Queue competingQueue() {
-        return QueueBuilder.durable(QUEUE).build();
+        return QueueBuilder.durable(QUEUE)
+                .maxLength(50)
+                .overflow(QueueBuilder.Overflow.dropHead)
+                .maxPriority(10)
+                .build();
     }
 
     /** Binds that single queue. Two listeners compete for messages on it. */

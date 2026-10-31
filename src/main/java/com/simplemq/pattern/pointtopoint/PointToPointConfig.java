@@ -21,10 +21,15 @@ public class PointToPointConfig {
         return new DirectExchange(EXCHANGE, true, false);
     }
 
-    /** Declares the single queue that receives every point-to-point message. */
+    /**
+     * Declares the single durable queue for this pattern.
+     * A message nobody takes is discarded after 60 seconds.
+     */
     @Bean
     Queue pointQueue() {
-        return QueueBuilder.durable(QUEUE).build();
+        return QueueBuilder.durable(QUEUE)
+                .ttl(60_000)
+                .build();
     }
 
     /** Binds that queue to the exchange with one routing key. */

@@ -20,7 +20,7 @@
                     <h2 id="point-title">Point to point</h2>
                 </div>
                 <button type="button" class="tip" aria-label="About point to point" aria-describedby="tip-point">i</button>
-                <p id="tip-point" class="tip-text" role="tooltip">One routing key, one queue, one listener. A second listener is not waiting for a copy.</p>
+                <p id="tip-point" class="tip-text" role="tooltip">One routing key, one queue, one listener. A message nobody takes is discarded after 60 seconds.</p>
             </div>
             <form data-send="/api/patterns/point-to-point" data-refresh="point">
                 <label class="sr" for="point-text">Text</label>
@@ -84,11 +84,14 @@
                     <h2 id="competing-title">Competing consumers</h2>
                 </div>
                 <button type="button" class="tip" aria-label="About competing consumers" aria-describedby="tip-competing">i</button>
-                <p id="tip-competing" class="tip-text" role="tooltip">Two listeners share one queue. Send several messages. Each message is delivered to only one worker.</p>
+                <p id="tip-competing" class="tip-text" role="tooltip">Two listeners share one queue. Each message goes to only one worker. Priority runs from 0 to 10, and the queue keeps at most 50 messages.</p>
             </div>
             <form data-send="/api/patterns/competing" data-refresh="competing">
                 <label class="sr" for="competing-text">Text</label>
                 <textarea id="competing-text" maxlength="500" rows="2" required placeholder="job-1"></textarea>
+                <label class="field" for="competing-priority">Priority
+                    <input id="competing-priority" name="priority" type="number" min="0" max="10" value="0">
+                </label>
                 <div class="actions">
                     <button type="submit">Send</button>
                     <p class="status" role="status"></p>
@@ -121,7 +124,7 @@
                     <h2 id="dead-title">Dead letter</h2>
                 </div>
                 <button type="button" class="tip" aria-label="About the dead-letter queue" aria-describedby="tip-dead">i</button>
-                <p id="tip-dead" class="tip-text" role="tooltip">The worker rejects the message. RabbitMQ moves it from pattern.dead.work to pattern.dead.dlq.</p>
+                <p id="tip-dead" class="tip-text" role="tooltip">The worker rejects the message. RabbitMQ moves it to pattern.dead.dlq, where it stays for 10 minutes.</p>
             </div>
             <form data-send="/api/patterns/dead-letter" data-refresh="dead">
                 <label class="sr" for="dead-text">Text</label>
