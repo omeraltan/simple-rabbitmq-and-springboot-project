@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: simple-rabbitmq
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: egitim
+    password: change-me

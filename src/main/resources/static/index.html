@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Messages</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+    <header>
+        <p class="eyebrow">RabbitMQ</p>
+        <h1>Messages</h1>
+        <p class="lede">A message is published to <code>app.messages</code>. The listener reads it and the list below updates.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="compose-title">
+        <h2 id="compose-title">New message</h2>
+        <form id="form">
+            <label for="text">Text</label>
+            <textarea id="text" name="text" maxlength="500" rows="4" required placeholder="Write a short message"></textarea>
+            <div class="actions">
+                <button type="submit">Send</button>
+                <p id="status" role="status"></p>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel" aria-labelledby="received-title">
+        <div class="section-head">
+            <h2 id="received-title">Received</h2>
+            <p id="count" class="count">0</p>
+        </div>
+        <p id="empty">No messages yet. Send one above.</p>
+        <ol id="list"></ol>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@ The password stays on your machine. It is not in git.
 
 ## The app
 
-Java 21 and Spring Boot. Messaging uses `spring-boot-starter-amqp`.
+Java 17 and Spring Boot. Messaging uses `spring-boot-starter-amqp`.
 
 There is one direct exchange, one durable queue, and one routing key. `RabbitTemplate` publishes. A `@RabbitListener` consumes. Received messages are kept in memory so the page can show them; restarting the app clears that list. The queue itself is RabbitMQ's.
 
@@ -29,9 +29,9 @@ There is one direct exchange, one durable queue, and one routing key. `RabbitTem
 - `/` is the page
 
 ```bash
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 Open http://localhost:8080.
 
-Copy `application.yml.example` to `application.yml` and put the broker password there. `application.yml` is ignored by git.
+Copy `src/main/resources/application.yml.example` to `src/main/resources/application.yml` and put the broker password there. `application.yml` is ignored by git.
