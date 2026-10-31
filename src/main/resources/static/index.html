@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Messages</title>
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+    <header>
+        <p class="eyebrow">RabbitMQ</p>
+        <h1>Send a message</h1>
+        <p class="lede">It goes to the <code>app.messages</code> queue. The listener puts it in the list below.</p>
+    </header>
+
+    <form id="form">
+        <label for="text">Message</label>
+        <textarea id="text" name="text" maxlength="500" rows="3" required placeholder="Write something short"></textarea>
+        <div class="row">
+            <button type="submit">Send</button>
+            <p id="status" role="status"></p>
+        </div>
+    </form>
+
+    <section>
+        <h2>Received</h2>
+        <ol id="list"></ol>
+        <p id="empty">Nothing yet.</p>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
