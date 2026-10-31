@@ -34,6 +34,13 @@ Lists on the page live in memory. Restarting the app clears them. The queues sta
 
 One direct exchange, one queue, one listener. The name of all three is `pattern.point`. A message is delivered once.
 
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.point]
+    exchange --> queue[pattern.point]
+    queue --> listener[Listener]
+```
+
 ```bash
 curl -X POST http://localhost:8080/api/patterns/point-to-point \
   -H 'Content-Type: application/json' -d '{"text":"hello"}'
@@ -46,6 +53,15 @@ The queue is durable and each message expires after 60 seconds if nobody takes i
 
 A fanout exchange, `pattern.fanout`, copies one publish onto `pattern.fanout.inbox` and `pattern.fanout.audit`. Both cards show the same text. The routing key is ignored.
 
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.fanout]
+    exchange --> inbox[pattern.fanout.inbox]
+    exchange --> audit[pattern.fanout.audit]
+    inbox --> inboxListener[Inbox listener]
+    audit --> auditListener[Audit listener]
+```
+
 ```bash
 curl -X POST http://localhost:8080/api/patterns/publish-subscribe \
   -H 'Content-Type: application/json' -d '{"text":"hello"}'
@@ -56,6 +72,15 @@ curl http://localhost:8080/api/patterns/publish-subscribe/audit
 **Competing consumers** — `com.simplemq.pattern.competing`
 
 One direct exchange and one queue, both named `pattern.competing`. Two listeners read that queue. Each message is handed to only one of them. Send a few and compare Worker A with Worker B.
+
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.competing]
+    exchange --> queue[pattern.competing]
+    queue --> pick{one of}
+    pick --> workerA[Worker A]
+    pick --> workerB[Worker B]
+```
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/competing \
@@ -69,6 +94,15 @@ The queue holds at most 50 messages. Past that, the oldest is dropped. Priority 
 **Dead letter** — `com.simplemq.pattern.deadletter`
 
 The worker on `pattern.dead.work` rejects every message and does not put it back. The queue is declared with a dead-letter exchange, so the broker moves the message to `pattern.dead.dlq`.
+
+```mermaid
+flowchart LR
+    page[Page] --> exchange[pattern.dead]
+    exchange --> work[pattern.dead.work]
+    work --> worker[Worker rejects]
+    worker --> dlx[pattern.dead.dlx]
+    dlx --> dlq[pattern.dead.dlq]
+```
 
 ```bash
 curl -X POST http://localhost:8080/api/patterns/dead-letter \
