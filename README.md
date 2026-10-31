@@ -35,16 +35,29 @@ Lists on the page live in memory. Restarting the app clears them. The queues sta
 One direct exchange, one queue, one listener. The name of all three is `pattern.point`. A message is delivered once.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryTextColor':'#17211c','lineColor':'#5d6b64','clusterBkg':'#f7f8f7','clusterBorder':'#d5dbd7'}}}%%
 flowchart LR
-    page[Page] --> exchange[pattern.point]
-    exchange --> queue[pattern.point]
-    queue --> listener[Listener]
+    page(["Page"])
+    exchange{{"direct exchange\npattern.point"}}
+    queue[("queue\npattern.point")]
+    listener["Listener"]
+
+    page -->|publish| exchange
+    exchange -->|routing key| queue
+    queue -->|deliver once| listener
+
+    style exchange fill:#1c4b38,color:#ffffff,stroke:#143628
+    style queue fill:#e7f0eb,color:#17211c,stroke:#1c4b38
+    style page fill:#ffffff,stroke:#c9d2cc
+    style listener fill:#ffffff,stroke:#c9d2cc
 ```
 
 A bank transfer is the shape of this pattern. The mobile app publishes one debit. The exchange routes it to a single queue. One payment service takes it and posts the ledger line. A second service never sees that debit, so the customer is not charged twice.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','actorBkg':'#1c4b38','actorTextColor':'#ffffff','actorBorder':'#143628','signalColor':'#1c4b38','noteBkgColor':'#e7f0eb','noteBorderColor':'#1c4b38'}}}%%
 sequenceDiagram
+    autonumber
     actor Customer
     participant App as Mobile app
     participant Exchange as pattern.point
@@ -53,11 +66,11 @@ sequenceDiagram
     participant Ledger as Ledger
 
     Customer->>App: Send 250 to Ada
-    App->>Exchange: publish debit once
-    Exchange->>Queue: route by key pattern.point
-    Payment->>Queue: take the only copy
-    Payment->>Ledger: post one line
-    Note over Payment,Ledger: No second consumer receives this debit
+    App->>Exchange: Publish the debit once
+    Exchange->>Queue: Route with key pattern.point
+    Payment->>Queue: Take the only copy
+    Payment->>Ledger: Post one ledger line
+    Note over Payment,Ledger: A second service never receives this debit
 ```
 
 ```bash
@@ -81,18 +94,35 @@ Where it shows up:
 A fanout exchange, `pattern.fanout`, copies one publish onto `pattern.fanout.inbox` and `pattern.fanout.audit`. Both cards show the same text. The routing key is ignored.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryTextColor':'#17211c','lineColor':'#5d6b64'}}}%%
 flowchart LR
-    page[Page] --> exchange[pattern.fanout]
-    exchange --> inbox[pattern.fanout.inbox]
-    exchange --> audit[pattern.fanout.audit]
-    inbox --> inboxListener[Inbox listener]
-    audit --> auditListener[Audit listener]
+    page(["Page"])
+    exchange{{"fanout exchange\npattern.fanout"}}
+    inbox[("queue\npattern.fanout.inbox")]
+    audit[("queue\npattern.fanout.audit")]
+    inboxListener["Inbox listener"]
+    auditListener["Audit listener"]
+
+    page -->|publish once| exchange
+    exchange -->|copy| inbox
+    exchange -->|copy| audit
+    inbox --> inboxListener
+    audit --> auditListener
+
+    style exchange fill:#1c4b38,color:#ffffff,stroke:#143628
+    style inbox fill:#e7f0eb,color:#17211c,stroke:#1c4b38
+    style audit fill:#e7f0eb,color:#17211c,stroke:#1c4b38
+    style page fill:#ffffff,stroke:#c9d2cc
+    style inboxListener fill:#ffffff,stroke:#c9d2cc
+    style auditListener fill:#ffffff,stroke:#c9d2cc
 ```
 
 An order confirmation is the shape of this pattern. Checkout publishes one event. The exchange copies it onto every bound queue. Warehouse, email, and fraud each work from their own copy. One of them finishing does not remove the others.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','actorBkg':'#1c4b38','actorTextColor':'#ffffff','actorBorder':'#143628','signalColor':'#1c4b38','noteBkgColor':'#e7f0eb','noteBorderColor':'#1c4b38'}}}%%
 sequenceDiagram
+    autonumber
     actor Customer
     participant Checkout
     participant Exchange as pattern.fanout
@@ -101,15 +131,15 @@ sequenceDiagram
     participant Fraud as Fraud queue
 
     Customer->>Checkout: Pay for order 1042
-    Checkout->>Exchange: publish OrderConfirmed once
-    par copy to every queue
-        Exchange->>Warehouse: copy
-        Exchange->>Mail: copy
-        Exchange->>Fraud: copy
+    Checkout->>Exchange: Publish OrderConfirmed once
+    par One copy on each queue
+        Exchange->>Warehouse: Copy
+        Exchange->>Mail: Copy
+        Exchange->>Fraud: Copy
     end
-    Warehouse->>Warehouse: pick and pack
-    Mail->>Customer: send receipt
-    Fraud->>Fraud: score the order
+    Warehouse->>Warehouse: Pick and pack
+    Mail->>Customer: Send the receipt
+    Fraud->>Fraud: Score the order
 ```
 
 ```bash
@@ -132,31 +162,45 @@ Where it shows up:
 One direct exchange and one queue, both named `pattern.competing`. Two listeners read that queue. Each message is handed to only one of them. Send a few and compare Worker A with Worker B.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryTextColor':'#17211c','lineColor':'#5d6b64'}}}%%
 flowchart LR
-    page[Page] --> exchange[pattern.competing]
-    exchange --> queue[pattern.competing]
-    queue --> pick{one of}
-    pick --> workerA[Worker A]
-    pick --> workerB[Worker B]
+    page(["Page"])
+    exchange{{"direct exchange\npattern.competing"}}
+    queue[("queue\npattern.competing\nmax 50, priority 0-10")]
+    workerA["Worker A"]
+    workerB["Worker B"]
+
+    page -->|publish| exchange
+    exchange -->|one message| queue
+    queue -->|taken by one worker| workerA
+    queue -->|taken by one worker| workerB
+
+    style exchange fill:#1c4b38,color:#ffffff,stroke:#143628
+    style queue fill:#e7f0eb,color:#17211c,stroke:#1c4b38
+    style page fill:#ffffff,stroke:#c9d2cc
+    style workerA fill:#ffffff,stroke:#c9d2cc
+    style workerB fill:#ffffff,stroke:#c9d2cc
 ```
 
 A checkout desk is the shape of this pattern. Charges wait on one queue. Whichever payment server is free takes the next charge. Server A and server B never both settle the same card payment. A higher priority, such as a retry, is delivered first when the queue is backed up.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','actorBkg':'#1c4b38','actorTextColor':'#ffffff','actorBorder':'#143628','signalColor':'#1c4b38','noteBkgColor':'#e7f0eb','noteBorderColor':'#1c4b38'}}}%%
 sequenceDiagram
+    autonumber
     participant Checkout
     participant Exchange as pattern.competing
     participant Queue as Charge queue
     participant A as Payment server A
     participant B as Payment server B
 
-    Checkout->>Exchange: charge order 1042, priority 8
-    Exchange->>Queue: one message
-    Checkout->>Exchange: charge order 1043, priority 0
-    Exchange->>Queue: one message
-    A->>Queue: take 1042
-    B->>Queue: take 1043
-    Note over A,B: 1042 is not delivered to B
+    Checkout->>Exchange: Charge 1042, priority 8
+    Exchange->>Queue: Store one message
+    Checkout->>Exchange: Charge 1043, priority 0
+    Exchange->>Queue: Store one message
+    A->>Queue: Take 1042
+    B->>Queue: Take 1043
+    Note over A,B: 1042 is not delivered to server B
 ```
 
 ```bash
@@ -181,18 +225,35 @@ Where it shows up:
 The worker on `pattern.dead.work` rejects every message and does not put it back. The queue is declared with a dead-letter exchange, so the broker moves the message to `pattern.dead.dlq`.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryTextColor':'#17211c','lineColor':'#5d6b64'}}}%%
 flowchart LR
-    page[Page] --> exchange[pattern.dead]
-    exchange --> work[pattern.dead.work]
-    work --> worker[Worker rejects]
-    worker --> dlx[pattern.dead.dlx]
-    dlx --> dlq[pattern.dead.dlq]
+    page(["Page"])
+    exchange{{"direct exchange\npattern.dead"}}
+    work[("work queue\npattern.dead.work")]
+    worker["Worker rejects"]
+    dlx{{"dead-letter exchange\npattern.dead.dlx"}}
+    dlq[("review queue\npattern.dead.dlq\nTTL 10 min")]
+
+    page -->|publish| exchange
+    exchange -->|routing key| work
+    work -->|reject, do not requeue| worker
+    worker -->|dead-letter| dlx
+    dlx --> dlq
+
+    style exchange fill:#1c4b38,color:#ffffff,stroke:#143628
+    style dlx fill:#8a2b2b,color:#ffffff,stroke:#6d2222
+    style work fill:#e7f0eb,color:#17211c,stroke:#1c4b38
+    style dlq fill:#f8ecec,color:#17211c,stroke:#8a2b2b
+    style page fill:#ffffff,stroke:#c9d2cc
+    style worker fill:#ffffff,stroke:#c9d2cc
 ```
 
 A malformed card payment is the shape of this pattern. The live worker refuses the message. The broker does not put it back on the work queue, where it would block the next valid charge. It moves the message through the dead-letter exchange onto a review queue. Support fixes the card number, then publishes a new message. The parked copy expires after 10 minutes in this app.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'ui-sans-serif, system-ui, sans-serif','actorBkg':'#1c4b38','actorTextColor':'#ffffff','actorBorder':'#143628','signalColor':'#1c4b38','noteBkgColor':'#f8ecec','noteBorderColor':'#8a2b2b'}}}%%
 sequenceDiagram
+    autonumber
     participant Checkout
     participant Work as pattern.dead.work
     participant Worker as Payment worker
@@ -200,11 +261,11 @@ sequenceDiagram
     participant Review as pattern.dead.dlq
     actor Support
 
-    Checkout->>Work: charge, card number invalid
-    Worker->>Work: reject, do not requeue
-    Work->>Dlx: dead-letter the message
-    Dlx->>Review: park for a person
-    Support->>Review: read the failed charge
+    Checkout->>Work: Charge with an invalid card number
+    Worker->>Work: Reject and do not requeue
+    Work->>Dlx: Dead-letter the message
+    Dlx->>Review: Park it for a person
+    Support->>Review: Read the failed charge
     Note over Review: This app drops the parked message after 10 minutes
 ```
 
